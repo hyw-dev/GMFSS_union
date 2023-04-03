@@ -69,10 +69,11 @@ class IFNet(nn.Module):
             channel = x.shape[1] // 2
             img0 = x[:, :channel]
             img1 = x[:, channel:]
-        if not torch.is_tensor(timestep):
-            timestep = (x[:, :1].clone() * 0 + 1) * timestep
-        else:
-            timestep = timestep.repeat(1, 1, img0.shape[2], img0.shape[3])
+        timestep = (
+            timestep.repeat(1, 1, img0.shape[2], img0.shape[3])
+            if torch.is_tensor(timestep)
+            else (x[:, :1].clone() * 0 + 1) * timestep
+        )
         flow = None
         block = [self.block0, self.block1, self.block2, self.block3]
         for i in range(4):
@@ -93,5 +94,4 @@ class IFNet(nn.Module):
             warped_img0 = warp(img0, flow[:, :2])
             warped_img1 = warp(img1, flow[:, 2:4])
         mask = torch.sigmoid(mask)
-        merged = warped_img0 * mask + warped_img1 * (1 - mask)
-        return merged
+        return warped_img0 * mask + warped_img1 * (1 - mask)

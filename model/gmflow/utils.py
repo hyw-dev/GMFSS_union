@@ -39,17 +39,21 @@ def merge_splits(splits,
         new_b = b // num_splits // num_splits
 
         splits = splits.view(new_b, num_splits, num_splits, h, w, c)
-        merge = splits.permute(0, 1, 3, 2, 4, 5).contiguous().view(
-            new_b, num_splits * h, num_splits * w, c)  # [B, H, W, C]
+        return (
+            splits.permute(0, 1, 3, 2, 4, 5)
+            .contiguous()
+            .view(new_b, num_splits * h, num_splits * w, c)
+        )
     else:  # [B*K*K, C, H/K, W/K]
         b, c, h, w = splits.size()
         new_b = b // num_splits // num_splits
 
         splits = splits.view(new_b, num_splits, num_splits, c, h, w)
-        merge = splits.permute(0, 3, 1, 4, 2, 5).contiguous().view(
-            new_b, c, num_splits * h, num_splits * w)  # [B, C, H, W]
-
-    return merge
+        return (
+            splits.permute(0, 3, 1, 4, 2, 5)
+            .contiguous()
+            .view(new_b, c, num_splits * h, num_splits * w)
+        )
 
 
 def normalize_img(img0, img1):

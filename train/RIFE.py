@@ -131,8 +131,8 @@ class Model:
         img0, img1, gt = simple_color_aug.augment(img0), simple_color_aug.augment(img1), simple_color_aug.augment(gt)
         flow01, flow10, metric0, metric1, merged, mergedl1 = self.inference(img0, img1, timestep, scale=1.0)
         merged, mergedl1, gt = simple_color_aug.reverse_augment(merged), simple_color_aug.reverse_augment(mergedl1), simple_color_aug.reverse_augment(gt)
-        
-        loss_l1 = self.l1_loss(mergedl1 - gt) 
+
+        loss_l1 = self.l1_loss(mergedl1 - gt)
         loss_lpips = (self.lpips.forward((merged - 0.5) / 0.5, (gt - 0.5) / 0.5).mean((1,2,3))).mean()
         loss_gan = self.gan_loss(self.net_d(merged), True, is_disc=False)
 
@@ -158,10 +158,9 @@ class Model:
             l_d_fake = l_d_fake / accum_iter
             l_d_fake.backward()
 
-        if training:
-            if ((step + 1) % accum_iter == 0) or ((step + 1) % spe == 0):
-                self.optimD.step()
-                self.optimD.zero_grad()
+        if training and ((step + 1) % accum_iter == 0) or ((step + 1) % spe == 0):
+            self.optimD.step()
+            self.optimD.zero_grad()
 
         return merged, torch.cat((flow01, flow10), 1), metric0, metric1, loss_l1, loss_lpips, l_d_real, l_d_fake
 
@@ -189,7 +188,6 @@ class SimpleColorAugmentation:
         if not enable:
             self.swap = [0, 1, 2]  # no swap
             self.reverse_swap = self.swap
-        pass
 
     def augment(self, img):
         """

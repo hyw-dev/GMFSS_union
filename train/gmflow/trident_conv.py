@@ -52,11 +52,7 @@ class MultiScaleTridentConv(nn.Module):
         self.weight = nn.Parameter(
             torch.Tensor(out_channels, in_channels // groups, *self.kernel_size)
         )
-        if bias:
-            self.bias = nn.Parameter(torch.Tensor(out_channels))
-        else:
-            self.bias = None
-
+        self.bias = nn.Parameter(torch.Tensor(out_channels)) if bias else None
         nn.init.kaiming_uniform_(self.weight, nonlinearity="relu")
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)

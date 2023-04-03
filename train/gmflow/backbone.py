@@ -16,7 +16,7 @@ class ResidualBlock(nn.Module):
 
         self.norm1 = norm_layer(planes)
         self.norm2 = norm_layer(planes)
-        if not stride == 1 or in_planes != planes:
+        if stride != 1 or in_planes != planes:
             self.norm3 = norm_layer(planes)
 
         if stride == 1 and in_planes == planes:
@@ -109,9 +109,4 @@ class CNNEncoder(nn.Module):
 
         x = self.conv2(x)
 
-        if self.num_branch > 1:
-            out = self.trident_conv([x] * self.num_branch)  # high to low res
-        else:
-            out = [x]
-
-        return out
+        return self.trident_conv([x] * self.num_branch) if self.num_branch > 1 else [x]

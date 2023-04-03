@@ -39,7 +39,6 @@ def train(model, local_rank):
     if local_rank == 0:
         writer = SummaryWriter('log/train')
     step = 0
-    nr_eval = 0
     dataset = VimeoDataset('train')
     train_data = DataLoader(dataset, batch_size=args.batch_size, shuffle =True, num_workers=6, pin_memory=True, drop_last=True)
     args.step_per_epoch = train_data.__len__()
@@ -70,14 +69,13 @@ def train(model, local_rank):
                 flow = flow.permute(0, 2, 3, 1).detach().cpu().numpy()
                 for i in range(5):
                     imgs = np.concatenate((pred[i], gt[i]), 1)
-                    writer.add_image(str(i) + '/img', imgs, step, dataformats='HWC')
-                    writer.add_image(str(i) + '/flow', flow2rgb(flow[i]), step, dataformats='HWC')
-                    writer.add_image(str(i) + '/metric', metric[i], step, dataformats='HWC')
+                    writer.add_image(f'{str(i)}/img', imgs, step, dataformats='HWC')
+                    writer.add_image(f'{str(i)}/flow', flow2rgb(flow[i]), step, dataformats='HWC')
+                    writer.add_image(f'{str(i)}/metric', metric[i], step, dataformats='HWC')
                 writer.flush()
             if local_rank == 0:
                 print('epoch:{} {}/{} time:{:.2f}+{:.2f} loss_lpips:{:.4e}'.format(epoch, i, args.step_per_epoch, data_time_interval, train_time_interval, loss_lpips))
             step += 1
-        nr_eval += 1
         model.save_model(log_path, local_rank)
         
 if __name__ == "__main__":    

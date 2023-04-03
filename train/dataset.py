@@ -28,11 +28,11 @@ class VimeoDataset(Dataset):
         return len(self.meta_data)
 
     def load_data(self):
-        cnt = int(len(self.trainlist))
-        if self.dataset_name == 'train':
-            self.meta_data = self.trainlist[:cnt]
-        elif self.dataset_name == 'test':
+        cnt = len(self.trainlist)
+        if self.dataset_name == 'test':
             self.meta_data = self.testlist
+        elif self.dataset_name == 'train':
+            self.meta_data = self.trainlist[:cnt]
         else:
             self.meta_data = self.trainlist[cnt:]
            
@@ -47,10 +47,14 @@ class VimeoDataset(Dataset):
 
     def getimg(self, index):
         imgpath = os.path.join(self.image_root, self.meta_data[index])
-        if os.path.exists(imgpath + '/frame1.jpg'):
-            imgpaths = [imgpath + '/frame1.jpg', imgpath + '/frame2.jpg', imgpath + '/frame3.jpg']
-        elif os.path.exists(imgpath + '/im0.png'):
-            imgpaths = [imgpath + '/im0.png', imgpath + '/im1.png', imgpath + '/im2.png']
+        if os.path.exists(f'{imgpath}/frame1.jpg'):
+            imgpaths = [
+                f'{imgpath}/frame1.jpg',
+                f'{imgpath}/frame2.jpg',
+                f'{imgpath}/frame3.jpg',
+            ]
+        elif os.path.exists(f'{imgpath}/im0.png'):
+            imgpaths = [f'{imgpath}/im0.png', f'{imgpath}/im1.png', f'{imgpath}/im2.png']
 
         # Load images
         img0 = cv2.imread(imgpaths[0])
