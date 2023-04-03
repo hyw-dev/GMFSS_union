@@ -11,9 +11,7 @@ def single_head_full_attention(q, k, v):
 
     scores = torch.matmul(q, k.permute(0, 2, 1)) / (q.size(2) ** .5)  # [B, L, L]
     attn = torch.softmax(scores, dim=2)  # [B, L, L]
-    out = torch.matmul(attn, v)  # [B, L, C]
-
-    return out
+    return torch.matmul(attn, v)
 
 
 def generate_shift_window_attn_mask(input_resolution, window_size_h, window_size_w,
@@ -38,7 +36,9 @@ def generate_shift_window_attn_mask(input_resolution, window_size_h, window_size
 
     mask_windows = mask_windows.view(-1, window_size_h * window_size_w)
     attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
-    attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
+    attn_mask = attn_mask.masked_fill(attn_mask != 0, -100.0).masked_fill(
+        attn_mask == 0, 0.0
+    )
 
     return attn_mask
 
@@ -257,14 +257,18 @@ class FeatureTransformer(nn.Module):
         self.d_model = d_model
         self.nhead = nhead
 
-        self.layers = nn.ModuleList([
-            TransformerBlock(d_model=d_model,
-                             nhead=nhead,
-                             attention_type=attention_type,
-                             ffn_dim_expansion=ffn_dim_expansion,
-                             with_shift=True if attention_type == 'swin' and i % 2 == 1 else False,
-                             )
-            for i in range(num_layers)])
+        self.layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    d_model=d_model,
+                    nhead=nhead,
+                    attention_type=attention_type,
+                    ffn_dim_expansion=ffn_dim_expansion,
+                    with_shift=attention_type == 'swin' and i % 2 == 1,
+                )
+                for i in range(num_layers)
+            ]
+        )
 
         for p in self.parameters():
             if p.dim() > 1:
@@ -404,6 +408,9 @@ class FeatureFlowAttention(nn.Module):
 
         prob = torch.softmax(scores, dim=-1)
 
-        out = torch.matmul(prob, flow_window).view(b, h, w, 2).permute(0, 3, 1, 2).contiguous()  # [B, 2, H, W]
-
-        return out
+        return (
+            torch.matmul(prob, flow_window)
+            .view(b, h, w, 2)
+            .permute(0, 3, 1, 2)
+            .contiguous()
+        )

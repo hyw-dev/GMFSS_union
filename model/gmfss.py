@@ -74,11 +74,9 @@ class Model:
     def inference(self, img0, img1, reuse_things, timestep):
         img0 = F.interpolate(img0, scale_factor = 0.5, mode="bilinear", align_corners=False)
         img1 = F.interpolate(img1, scale_factor = 0.5, mode="bilinear", align_corners=False)
-        
+
         imgs = torch.cat((img0, img1), 1)
         scale_list = [8, 4, 2, 1]
         merged = self.ifnet(imgs, timestep, scale_list)
 
-        out = self.fusionnet(img0, img1, reuse_things, merged, timestep)
-        
-        return out
+        return self.fusionnet(img0, img1, reuse_things, merged, timestep)

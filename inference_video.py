@@ -18,27 +18,30 @@ def transferAudio(sourceVideo, targetVideo):
     import moviepy.editor
     tempAudioFileName = "./temp/audio.mkv"
 
-    # split audio from original video file and store in "temp" directory
-    if True:
-
-        # clear old "temp" directory if it exits
-        if os.path.isdir("temp"):
-            # remove temp directory
-            shutil.rmtree("temp")
-        # create new "temp" directory
-        os.makedirs("temp")
+    # clear old "temp" directory if it exits
+    if os.path.isdir("temp"):
+        # remove temp directory
+        shutil.rmtree("temp")
+    # create new "temp" directory
+    os.makedirs("temp")
         # extract audio from video
-        os.system('ffmpeg -y -i "{}" -c:a copy -vn {}'.format(sourceVideo, tempAudioFileName))
+    os.system(f'ffmpeg -y -i "{sourceVideo}" -c:a copy -vn {tempAudioFileName}')
 
-    targetNoAudio = os.path.splitext(targetVideo)[0] + "_noaudio" + os.path.splitext(targetVideo)[1]
+    targetNoAudio = f"{os.path.splitext(targetVideo)[0]}_noaudio{os.path.splitext(targetVideo)[1]}"
     os.rename(targetVideo, targetNoAudio)
     # combine audio file and new video file
-    os.system('ffmpeg -y -i "{}" -i {} -c copy "{}"'.format(targetNoAudio, tempAudioFileName, targetVideo))
+    os.system(
+        f'ffmpeg -y -i "{targetNoAudio}" -i {tempAudioFileName} -c copy "{targetVideo}"'
+    )
 
     if os.path.getsize(targetVideo) == 0: # if ffmpeg failed to merge the video and audio together try converting the audio to aac
         tempAudioFileName = "./temp/audio.m4a"
-        os.system('ffmpeg -y -i "{}" -c:a aac -b:a 160k -vn {}'.format(sourceVideo, tempAudioFileName))
-        os.system('ffmpeg -y -i "{}" -i {} -c copy "{}"'.format(targetNoAudio, tempAudioFileName, targetVideo))
+        os.system(
+            f'ffmpeg -y -i "{sourceVideo}" -c:a aac -b:a 160k -vn {tempAudioFileName}'
+        )
+        os.system(
+            f'ffmpeg -y -i "{targetNoAudio}" -i {tempAudioFileName} -c copy "{targetVideo}"'
+        )
         if (os.path.getsize(targetVideo) == 0): # if aac is not supported by selected format
             os.rename(targetNoAudio, targetVideo)
             print("Audio transfer failed. Interpolated video will have no audio")
@@ -72,13 +75,13 @@ parser.add_argument('--multi', dest='multi', type=int, default=2)
 args = parser.parse_args()
 if args.exp != 1:
     args.multi = (2 ** args.exp)
-assert (not args.video is None or not args.img is None)
+assert args.video is not None or args.img is not None
 if args.skip:
     print("skip flag is abandoned, please refer to issue #207.")
 if args.UHD and args.scale==1.0:
     args.scale = 0.5
 assert args.scale in [0.25, 0.5, 1.0, 2.0, 4.0]
-if not args.img is None:
+if args.img is not None:
     args.png = True
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,7 +104,7 @@ print("Loaded model")
 model.eval()
 model.device()
 
-if not args.video is None:
+if args.video is not None:
     videoCapture = cv2.VideoCapture(args.video)
     fps = videoCapture.get(cv2.CAP_PROP_FPS)
     tot_frame = videoCapture.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -115,16 +118,15 @@ if not args.video is None:
     lastframe = next(videogen)
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     video_path_wo_ext, ext = os.path.splitext(args.video)
-    print('{}.{}, {} frames in total, {}FPS to {}FPS'.format(video_path_wo_ext, args.ext, tot_frame, fps, args.fps))
-    if args.png == False and fpsNotAssigned == True:
+    print(
+        f'{video_path_wo_ext}.{args.ext}, {tot_frame} frames in total, {fps}FPS to {args.fps}FPS'
+    )
+    if args.png == False and fpsNotAssigned:
         print("The audio will be merged after interpolation process")
     else:
         print("Will not merge audio because using png or fps flag!")
 else:
-    videogen = []
-    for f in os.listdir(args.img):
-        if 'png' in f:
-            videogen.append(f)
+    videogen = [f for f in os.listdir(args.img) if 'png' in f]
     tot_frame = len(videogen)
     videogen.sort(key= lambda x:int(x[:-4]))
     lastframe = cv2.imread(os.path.join(args.img, videogen[0]), cv2.IMREAD_UNCHANGED)[:, :, ::-1].copy()
@@ -139,7 +141,7 @@ else:
     if args.output is not None:
         vid_out_name = args.output
     else:
-        vid_out_name = '{}_{}X_{}fps.{}'.format(video_path_wo_ext, args.multi, int(np.round(args.fps)), args.ext)
+        vid_out_name = f'{video_path_wo_ext}_{args.multi}X_{int(np.round(args.fps))}fps.{args.ext}'
     vid_out = cv2.VideoWriter(vid_out_name, fourcc, args.fps, (w, h))
 
 def clear_write_buffer(user_args, write_buffer):
@@ -157,7 +159,7 @@ def clear_write_buffer(user_args, write_buffer):
 def build_read_buffer(user_args, read_buffer, videogen):
     try:
         for frame in videogen:
-            if not user_args.img is None:
+            if user_args.img is not None:
                 frame = cv2.imread(os.path.join(user_args.img, frame))[:, :, ::-1].copy()
             if user_args.montage:
                 frame = frame[:, left: left + w]
@@ -169,26 +171,23 @@ def build_read_buffer(user_args, read_buffer, videogen):
 def make_inference(I0, I1, reuse_things, n):    
     global model
     if model.version >= 3.9:
-        res = []
-        for i in range(n):
-            res.append(model.inference(I0, I1, reuse_things, (i+1) * 1. / (n+1)))
-        return res
-    else:
-        middle = model.inference(I0, I1, args.scale)
-        if n == 1:
-            return [middle]
-        first_half = make_inference(I0, middle, n=n//2)
-        second_half = make_inference(middle, I1, n=n//2)
-        if n%2:
-            return [*first_half, middle, *second_half]
-        else:
-            return [*first_half, *second_half]
+        return [
+            model.inference(I0, I1, reuse_things, (i + 1) * 1.0 / (n + 1))
+            for i in range(n)
+        ]
+    middle = model.inference(I0, I1, args.scale)
+    if n == 1:
+        return [middle]
+    first_half = make_inference(I0, middle, n=n//2)
+    second_half = make_inference(middle, I1, n=n//2)
+    return (
+        [*first_half, middle, *second_half]
+        if n % 2
+        else [*first_half, *second_half]
+    )
 
 def pad_image(img):
-    if(args.fp16):
-        return F.pad(img, padding).half()
-    else:
-        return F.pad(img, padding)
+    return F.pad(img, padding).half() if args.fp16 else F.pad(img, padding)
 
 if args.montage:
     left = w // 4
@@ -220,7 +219,7 @@ while True:
     I0 = I1
     I1 = torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.
     I1 = F.interpolate(I1, (ph, pw), mode='bilinear', align_corners=False)
-    
+
     reuse_things = model.reuse(I0, I1, args.scale)
     output = make_inference(I0, I1, reuse_things, args.multi-1)
 
@@ -246,14 +245,14 @@ import time
 while(not write_buffer.empty()):
     time.sleep(0.1)
 pbar.close()
-if not vid_out is None:
+if vid_out is not None:
     vid_out.release()
 
 # move audio to new video file if appropriate
-if args.png == False and fpsNotAssigned == True and not args.video is None:
+if args.png == False and fpsNotAssigned == True and args.video is not None:
     try:
         transferAudio(args.video, vid_out_name)
     except:
         print("Audio transfer failed. Interpolated video will have no audio")
-        targetNoAudio = os.path.splitext(vid_out_name)[0] + "_noaudio" + os.path.splitext(vid_out_name)[1]
+        targetNoAudio = f"{os.path.splitext(vid_out_name)[0]}_noaudio{os.path.splitext(vid_out_name)[1]}"
         os.rename(targetNoAudio, vid_out_name)

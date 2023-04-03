@@ -109,7 +109,7 @@ class GridNet(nn.Module):
     def forward(self, x, x1, x2, x3, x4):
         X00=self.residual_model_head(x) + self.residual_model_head1(x1) + self.residual_model_head4(x4)      #---   182 ~ 185
         # X10 = self.residual_model_head1(x1)
-        
+
         X01=self.residual_model_01(X00) + X00#---   208 ~ 211 ,AddBackward1213
 
         X10=self.downsample_model_10(X00) + self.residual_model_head2(x2)   #---   186 ~ 189
@@ -123,7 +123,7 @@ class GridNet(nn.Module):
         downsample_21=self.downsample_model_21(X11)    #219 ~ 222
         X21=residual_21 + downsample_21                # AddBackward1223
 
-        
+
         X24=self.residual_model_24(X21) + X21 #---   224 ~ 227 , AddBackward1229  
         X25=self.residual_model_25(X24) + X24 #---   230 ~ 233 , AddBackward1235 
 
@@ -144,9 +144,7 @@ class GridNet(nn.Module):
         residual_05=self.residual_model_05(X04) + X04  #281 ~ 284,AddBackward1286
         X05=upsample_05 + residual_05  # AddBackward1287
 
-        X_tail=self.residual_model_tail(X05)    #288 ~ 291
-
-        return X_tail
+        return self.residual_model_tail(X05)
 
 
 class FeatureExtractor(nn.Module):
